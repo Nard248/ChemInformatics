@@ -1,0 +1,224 @@
+#!/usr/bin/env python
+import sys
+from math import exp,log
+
+################################################################
+#                                                              #
+#    QEDExamplePython.py                                       #
+#    Written by Dr Richard Bickerton, University of Dundee     #
+#    http://www.hopkinslab.org/                                #
+#                                                              #
+#    Simple script intended to indicate the simplicity of      #
+#    implementing QED, hence the verbosity.                    #
+#                                                              #
+################################################################
+
+
+def usage():
+    print sys.argv[0], ": Calculates QED of compounds given .csv format file of PRE-CALCULATED molecular property data\n"
+    print "USAGE: ", sys.argv[0], " example_input_file.csv\n"
+    print """where example_input_file.csv looks like this:\n
+    NAME,MW,ALOGP,HBA,HBD,PSA,ROTB,AROM,ALERTS
+    ABACAVIR,286.33,0.297,6,3,101.88,4,2,1    
+    ACAMPROSATE,181.21,-1.159,4,2,91.85,4,0,2
+    ACEBUTOLOL,336.43,1.615,5,3,87.66,10,1,1
+    ACETAMINOPHEN,151.16,0.708,2,2,49.33,1,1,1
+    ACETAZOLAMIDE,222.25,-1.329,5,2,151.66,2,1,1
+    ACETOHEXAMIDE,324.4,2.119,4,2,100.72,4,1,1
+    ACETOPHENAZINE,411.56,3.233,6,1,72.32,7,2,1
+    """
+    print "N.B. Input file columns must be in this order. Header line is expected."
+    print "Output is tab delimited and goes to stdout comprising: input data, individual desirability functions, unweighted QED (QEDwu),weighted QED (QEDwmo)."
+    
+def ads(x,a,b,c,d,e,f,dx_max):
+
+    # Asymmetric Double Sigmoidal functions
+    
+    return((a+(b/(1+exp(-1*(x-c+d/2)/e))*(1-1/(1+exp(-1*(x-c-d/2)/f)))))/dx_max)
+
+
+def ads_params():
+    # ADS parameter sets for 8 molecular properties
+    params = { 'MW'    : {  'A'    : 2.817065973,
+                            'B'    : 392.5754953,
+                            'C'    : 290.7489764,
+                            'D'    : 2.419764353,
+                            'E'    : 49.22325677,
+                            'F'    : 65.37051707,
+                            'DMAX' : 104.98055614
+                          },
+               'ALOGP' : {  'A'    : 3.172690585,
+                            'B'    : 137.8624751,
+                            'C'    : 2.534937431,
+                            'D'    : 4.581497897,
+                            'E'    : 0.822739154,
+                            'F'    : 0.576295591,
+                            'DMAX' : 131.31866035,
+                          },
+               'HBA'   : {  'A'    : 2.948620388,   
+                            'B'    : 160.4605972,   
+                            'C'    : 3.615294657,  
+                            'D'    : 4.435986202,  
+                            'E'    : 0.290141953,  
+                            'F'    : 1.300669958,   
+                            'DMAX' : 148.77630464
+                          },
+               'HBD'   : {  'A'    : 1.618662227,   
+                            'B'    : 1010.051101, 
+                            'C'    : 0.985094388,   
+                            'D'    : 0.000000000001,  
+                            'E'    : 0.713820843,   
+                            'F'    : 0.920922555,   
+                            'DMAX' : 258.16326158
+                          },    
+               'PSA'   : {  'A'    : 1.876861559,
+                            'B'    : 125.2232657,
+                            'C'    : 62.90773554,
+                            'D'    : 87.83366614,
+                            'E'    : 12.01999824,
+                            'F'    : 28.51324732,
+                            'DMAX' : 104.56861672
+                          },
+               'ROTB'  : {  'A'    : 0.01,
+                            'B'    : 272.4121427,
+                            'C'    : 2.558379970,
+                            'D'    : 1.565547684,
+                            'E'    : 1.271567166,
+                            'F'    : 2.758063707,
+                            'DMAX' : 105.44204028
+                          },
+               'AROM'  : {  'A'    : 3.217788970,
+                            'B'    : 957.7374108,
+                            'C'    : 2.274627939,
+                            'D'    : 0.000000000001,
+                            'E'    : 1.317690384,
+                            'F'    : 0.375760881,
+                            'DMAX' : 312.33726097
+                          },                                       
+               'ALERTS': {  'A'    : 0.01, 
+                            'B'    : 1199.094025,
+                            'C'    : -0.09002883,
+                            'D'    : 0.000000000001,
+                            'E'    : 0.185904477,
+                            'F'    : 0.875193782,
+                            'DMAX' : 417.72531400
+                          }
+                }
+    return params
+
+def weights():
+
+    # unweighted "weights" included for ease of modification - set to zero to exclude a term
+    unweights={ 'MW'    : 1.0,
+                'ALOGP' : 1.0,
+                'HBA'   : 1.0,
+                'HBD'   : 1.0,    
+                'PSA'   : 1.0,
+                'ROTB'  : 1.0,
+                'AROM'  : 1.0,                                       
+                'ALERTS': 1.0
+    }
+
+    weights = { 'MW'    : 0.66,
+                'ALOGP' : 0.46,
+                'HBA'   : 0.05,
+                'HBD'   : 0.61,    
+                'PSA'   : 0.06,
+                'ROTB'  : 0.65,
+                'AROM'  : 0.48,                                       
+                'ALERTS': 0.95
+    }
+    return (unweights,weights)
+        
+if __name__=="__main__":
+
+    
+    if len(sys.argv)!=2:
+        usage()
+        sys.exit()
+    
+    # get the ADS parameters
+    p       = ads_params()
+    
+    # get the weights for each property (unweighted and weighted)
+    (u,w)   = weights()
+    
+    
+    # name of csv file containing the pre-calculated parameters
+    csvfile = sys.argv[1]
+    
+    # file handle
+    csvfilehandle = open(csvfile)
+    
+    # loop through lines and calculate Desirability for each compound
+    for i,line in enumerate(csvfilehandle):
+
+        # skip header line
+        if i==0:
+            continue
+            
+        # strip newline    
+        line = line.strip()
+
+        # split on csv
+        try: 
+            a    = line.split(",")
+            (name,mw,alogp,hba,hbd,psa,rotb,arom,alerts)=line.split(",") 
+        except:
+            print "invalid file format. Exiting."
+            sys.exit()
+          
+        desirability_functions = {
+        
+        'MW'     :  ads(float(mw),p['MW']['A'],p['MW']['B'],p['MW']['C'],p['MW']['D'],p['MW']['E'],p['MW']['F'],p['MW']['DMAX']),
+        
+        'ALOGP'  : ads(float(alogp),p['ALOGP']['A'],p['ALOGP']['B'],p['ALOGP']['C'],p['ALOGP']['D'],p['ALOGP']['E'],p['ALOGP']['F'],p['ALOGP']['DMAX']),
+        
+        'HBA'    : ads(int(hba),p['HBA']['A'],p['HBA']['B'],p['HBA']['C'],p['HBA']['D'],p['HBA']['E'],p['HBA']['F'],p['HBA']['DMAX']),
+
+        'HBD'    : ads(int(hbd),p['HBD']['A'],p['HBD']['B'],p['HBD']['C'],p['HBD']['D'],p['HBD']['E'],p['HBD']['F'],p['HBD']['DMAX']),
+        
+        'PSA'    : ads(float(psa),p['PSA']['A'],p['PSA']['B'],p['PSA']['C'],p['PSA']['D'],p['PSA']['E'],p['PSA']['F'],p['PSA']['DMAX']),
+ 
+        'ROTB'   : ads(int(rotb),p['ROTB']['A'],p['ROTB']['B'],p['ROTB']['C'],p['ROTB']['D'],p['ROTB']['E'],p['ROTB']['F'],p['ROTB']['DMAX']),
+        
+        'AROM'   : ads(int(arom),p['AROM']['A'],p['AROM']['B'],p['AROM']['C'],p['AROM']['D'],p['AROM']['E'],p['AROM']['F'],p['AROM']['DMAX']),
+        
+        'ALERTS' : ads(float(alerts),p['ALERTS']['A'],p['ALERTS']['B'],p['ALERTS']['C'],p['ALERTS']['D'],p['ALERTS']['E'],p['ALERTS']['F'],p['ALERTS']['DMAX'])
+        
+        }
+        
+        unweighted_numerator = 0
+        weighted_numerator   = 0
+        
+        for df in desirability_functions.keys():
+            unweighted_numerator+=u[df]*log(desirability_functions[df])
+            weighted_numerator  +=w[df]*log(desirability_functions[df])
+        
+        # Unweighted QED
+        qed_uw  = exp(unweighted_numerator/sum(u.values()))
+
+        # Weighted QED
+        qed_w   = exp(weighted_numerator/sum(w.values()))        
+        
+        # That's it. Now print some output.
+        if i==1:
+            headers = ("NAME","MW","ALOGP","HBA","HBD","PSA","ROTB","AROM","ALERTS",
+                              "MW_DES","ALOGP_DES","HBA_DES","HBD_DES","PSA_DES","ROTB_DES","AROM_DES","ALERTS_DES",
+                              "UNWEIGHTED_QED","WEIGHTED_QED")
+            print "\t".join(headers)        
+            
+        data    = (name,mw,alogp,hba,hbd,psa,rotb,arom,alerts,
+                round(desirability_functions['MW'],3),
+                round(desirability_functions['ALOGP'],3),
+                round(desirability_functions['HBA'],3),
+                round(desirability_functions['HBD'],3),
+                round(desirability_functions['PSA'],3),
+                round(desirability_functions['ROTB'],3),
+                round(desirability_functions['AROM'],3),
+                round(desirability_functions['ALERTS'],3),
+                round(qed_uw,3),
+                round(qed_w,3))
+            
+        print "\t".join(map(str,data))
+        

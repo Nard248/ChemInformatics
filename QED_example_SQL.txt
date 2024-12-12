@@ -1,0 +1,207 @@
+/*
+
+
+QEDExampleSQL.sql
+
+Written by Dr Richard Bickerton, University of Dundee
+http://www.hopkinslab.org/                                
+
+This SQL script is written for Oracle. It assumes the 8 molecular are precalculated in a table called MOLECULAR_PROPERTIES.
+Here's a suggestion for how that table could be made with some example data.
+
+CREATE TABLE MOLECULAR_PROPERTIES (
+NAME   VARCHAR2(400 BYTE), 
+MW     NUMBER(10,5), 
+ALOGP  NUMBER(10,5), 
+HBA    NUMBER(5,0), 
+HBD    NUMBER(5,0), 
+PSA    NUMBER(10,5), 
+ROTB   NUMBER(5,0), 
+AROM   NUMBER(5,0), 
+ALERTS NUMBER(5,0)
+);
+
+INSERT INTO molecular_properties (NAME,mw,alogp,hba,hbd,psa,rotb,arom,alerts) VALUES ('ABACAVIR',286.33232,0.297,6,3,101.88,4,2,1);
+INSERT INTO molecular_properties (NAME,mw,alogp,hba,hbd,psa,rotb,arom,alerts) VALUES ('ACAMPROSATE',181.21014,-1.159,4,2,91.85,4,0,2);
+INSERT INTO molecular_properties (NAME,mw,alogp,hba,hbd,psa,rotb,arom,alerts) VALUES ('ACEBUTOLOL',336.42591,1.615,5,3,87.66,10,1,1);
+INSERT INTO molecular_properties (NAME,mw,alogp,hba,hbd,psa,rotb,arom,alerts) VALUES ('ACETAMINOPHEN',151.16256,0.708,2,2,49.33,1,1,1);
+INSERT INTO molecular_properties (NAME,mw,alogp,hba,hbd,psa,rotb,arom,alerts) VALUES ('ACETAZOLAMIDE',222.24544,-1.329,5,2,151.66,2,1,1);
+INSERT INTO molecular_properties (NAME,mw,alogp,hba,hbd,psa,rotb,arom,alerts) VALUES ('ACETOHEXAMIDE',324.39529,2.119,4,2,100.72,4,1,1);
+INSERT INTO molecular_properties (NAME,mw,alogp,hba,hbd,psa,rotb,arom,alerts) VALUES ('ACETOPHENAZINE',411.56025,3.233,6,1,72.32,7,2,1);
+
+*/
+
+-- Desirability function parameters
+
+DEF MW_A       = 2.817065973; 
+DEF MW_B       = 392.5754953; 
+DEF MW_C       = 290.7489764; 
+DEF MW_D       = 2.419764353; 
+DEF MW_E       = 49.22325677;
+DEF MW_F       = 65.37051707;
+DEF MW_FMAX    = 104.98055614;
+
+DEF ALOGP_A    = 3.172690585;
+DEF ALOGP_B    = 137.8624751;
+DEF ALOGP_C    = 2.534937431;
+DEF ALOGP_D    = 4.581497897;
+DEF ALOGP_E    = 0.822739154;
+DEF ALOGP_F    = 0.576295591;
+DEF ALOGP_FMAX = 131.31866035;
+
+DEF HBA_A      = 2.948620388;
+DEF HBA_B      = 160.4605972;
+DEF HBA_C      = 3.615294657;
+DEF HBA_D      = 4.435986202;
+DEF HBA_E      = 0.290141953;
+DEF HBA_F      = 1.300669958;
+DEF HBA_FMAX   = 148.77630464;
+
+DEF HBD_A      = 1.618662227;
+DEF HBD_B      = 1010.051101;
+DEF HBD_C      = 0.985094388;
+DEF HBD_D      = 0.000000000001;
+DEF HBD_E      = 0.713820843;
+DEF HBD_F      = 0.920922555;
+DEF HBD_FMAX   = 258.16326158;
+
+DEF PSA_A      = 1.876861559;
+DEF PSA_B      = 125.2232657;
+DEF PSA_C      = 62.90773554;
+DEF PSA_D      = 87.83366614;
+DEF PSA_E      = 12.01999824;
+DEF PSA_F      = 28.51324732;
+DEF PSA_FMAX   = 104.56861672;
+
+DEF ROTB_A     = 0.01;
+DEF ROTB_B     = 272.4121427;
+DEF ROTB_C     = 2.558379970;
+DEF ROTB_D     = 1.565547684;
+DEF ROTB_E     = 1.271567166;
+DEF ROTB_F     = 2.758063707;
+DEF ROTB_FMAX  = 105.44204028;
+
+DEF AROM_A     = 3.217788970;
+DEF AROM_B     = 957.7374108;
+DEF AROM_C     = 2.274627939;
+DEF AROM_D     = 0.000000000001;
+DEF AROM_E     = 1.317690384;
+DEF AROM_F     = 0.375760881;
+DEF AROM_FMAX  = 312.33726097;
+
+DEF ALERTS_A   = 0.01;
+DEF ALERTS_B   = 1199.094025;
+DEF ALERTS_C   = -0.09002883;
+DEF ALERTS_D   = 0.000000000001;
+DEF ALERTS_E   = 0.185904477;
+DEF ALERTS_F   = 0.875193782;
+DEF ALERTS_FMAX= 417.72531400;
+
+-- WEIGHTS
+-- Unweighted
+DEF MW_UW       = 1;
+DEF ALOGP_UW    = 1;
+DEF HBA_UW      = 1;
+DEF HBD_UW      = 1;
+DEF PSA_UW      = 1;
+DEF ROTB_UW     = 1;
+DEF AROM_UW     = 1;
+DEF ALERTS_UW   = 1;
+
+-- Mean weights over top 1K
+DEF MW_1KW       = 0.66;
+DEF ALOGP_1KW    = 0.46;
+DEF HBA_1KW      = 0.05;
+DEF HBD_1KW      = 0.61;
+DEF PSA_1KW      = 0.06;
+DEF ROTB_1KW     = 0.65;
+DEF AROM_1KW     = 0.48;
+DEF ALERTS_1KW   = 0.95;
+
+
+SELECT NAME,
+       MW,
+       MW_DES,
+       ALOGP,
+       ALOGP_DES,
+       HBA,
+       HBA_DES,
+       HBD,
+       HBD_DES,
+       PSA,
+       PSA_DES,
+       -- ROTB
+       ROTB,
+       ROTB_DES,
+       -- AROM       
+       AROM,       
+       AROM_DES,
+       -- ALERTS
+       ALERTS,       
+       ALERTS_DES,
+        -- Unweighted QED
+       EXP((&MW_UW*LN(MW_DES)
+          + &ALOGP_UW*LN(ALOGP_DES)
+          + &HBA_UW*LN(HBA_DES)
+          + &HBD_UW*LN(HBD_DES)
+          + &PSA_UW*LN(PSA_DES)
+          + &ROTB_UW*LN(ROTB_DES)
+          + &AROM_UW*LN(AROM_DES)
+          + &ALERTS_UW*LN(ALERTS_DES))/
+          (
+            &MW_UW
+          + &ALOGP_UW
+          + &HBA_UW
+          + &HBD_UW
+          + &PSA_UW
+          + &ROTB_UW
+          + &AROM_UW
+          + &ALERTS_UW
+          )
+          )
+          as UNWEIGHTED_QED,
+       -- Weighted QED
+       EXP((&MW_1KW*LN(MW_DES)
+          + &ALOGP_1KW*LN(ALOGP_DES)
+          + &HBA_1KW*LN(HBA_DES)
+          + &HBD_1KW*LN(HBD_DES)
+          + &PSA_1KW*LN(PSA_DES)
+          + &ROTB_1KW*LN(ROTB_DES)
+          + &AROM_1KW*LN(AROM_DES)
+          + &ALERTS_1KW*LN(ALERTS_DES))/
+          (
+            &MW_1KW
+          + &ALOGP_1KW
+          + &HBA_1KW
+          + &HBD_1KW
+          + &PSA_1KW
+          + &ROTB_1KW
+          + &AROM_1KW
+          + &ALERTS_1KW
+          )
+          )
+          as WEIGHTED_QED
+  FROM (
+SELECT name,
+       MP.MW,
+       (&MW_A+(&MW_B/(1+EXP(-1*(MP.MW-&MW_C+&MW_D/2)/&MW_E))*(1-1/(1+EXP(-1*(MP.MW-&MW_C-&MW_D/2)/&MW_F)))))/&MW_FMAX AS MW_DES,
+       MP.ALOGP,
+       (&ALOGP_A+(&ALOGP_B/(1+EXP(-1*(MP.ALOGP-&ALOGP_C+&ALOGP_D/2)/&ALOGP_E))*(1-1/(1+EXP(-1*(MP.ALOGP-&ALOGP_C-&ALOGP_D/2)/&ALOGP_F)))))/&ALOGP_FMAX AS ALOGP_DES,
+       MP.HBA,
+       (&HBA_A+(&HBA_B/(1+EXP(-1*(MP.HBA-&HBA_C+&HBA_D/2)/&HBA_E))*(1-1/(1+EXP(-1*(MP.HBA-&HBA_C-&HBA_D/2)/&HBA_F)))))/&HBA_FMAX AS HBA_DES,
+       MP.HBD,
+       (&HBD_A+(&HBD_B/(1+EXP(-1*(MP.HBD-&HBD_C+&HBD_D/2)/&HBD_E))*(1-1/(1+EXP(-1*(MP.HBD-&HBD_C-&HBD_D/2)/&HBD_F)))))/&HBD_FMAX AS HBD_DES,
+       MP.PSA,
+       (&PSA_A+(&PSA_B/(1+EXP(-1*(MP.PSA-&PSA_C+&PSA_D/2)/&PSA_E))*(1-1/(1+EXP(-1*(MP.PSA-&PSA_C-&PSA_D/2)/&PSA_F)))))/&PSA_FMAX AS PSA_DES,
+       MP.ROTB,
+       (&ROTB_A+(&ROTB_B/(1+EXP(-1*(MP.ROTB-&ROTB_C+&ROTB_D/2)/&ROTB_E))*(1-1/(1+EXP(-1*(MP.ROTB-&ROTB_C-&ROTB_D/2)/&ROTB_F)))))/&ROTB_FMAX AS ROTB_DES,
+       MP.AROM,       
+       (&AROM_A+(&AROM_B/(1+EXP(-1*(MP.AROM-&AROM_C+&AROM_D/2)/&AROM_E))*(1-1/(1+EXP(-1*(MP.AROM-&AROM_C-&AROM_D/2)/&AROM_F)))))/&AROM_FMAX AS AROM_DES,
+       MP.ALERTS,       
+       (&ALERTS_A+(&ALERTS_B/(1+EXP(-1*(MP.ALERTS-(&ALERTS_C)+&ALERTS_D/2)/&ALERTS_E))*(1-1/(1+EXP(-1*(MP.ALERTS-(&ALERTS_C)-&ALERTS_D/2)/&ALERTS_F)))))/&ALERTS_FMAX AS ALERTS_DES     
+   FROM MOLECULAR_PROPERTIES MP
+   )
+
+
+
+  
